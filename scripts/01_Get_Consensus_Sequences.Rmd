@@ -1,0 +1,85 @@
+---
+title: "01_Get_Consensus"
+author: "Julin Maloof"
+date: "2023-05-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Using YaHS assembly `Sdiv.20220815.final.assembly.fasta` at `https://ucdavis.app.box.com/folder/190583930929`
+
+
+##  Find PDS coordinates using existing maker annotation
+Download `Sdiv.gff3`
+
+```{bash, eval=FALSE}
+ grep phytoene Sdiv.gff3                                                                
+```
+ 
+```
+scaffold_7	maker	gene	9684161	9689234	.	+	.	ID=Sdiv_G00024652;Name=Sdiv_G00024652;Alias=maker-scaffold_7-augustus-gene-96.45;Note=Similar to PDS: 15-cis-phytoene desaturase%2C chloroplastic/chromoplastic (Arabidopsis thaliana);Dbxref=InterPro:IPR002937,PFAM:PF01593;Ontology_term=GO:0016491;
+scaffold_7	maker	mRNA	9684161	9689234	.	+	.	ID=Sdiv_T00024652-RA;Parent=Sdiv_G00024652;Name=Sdiv_T00024652-RA;Alias=maker-scaffold_7-augustus-gene-96.45-mRNA-1;_AED=0.13;_QI=237|1|1|1|0.92|0.86|15|319|564;_eAED=0.13;Note=Similar to PDS: 15-cis-phytoene desaturase%2C chloroplastic/chromoplastic (Arabidopsis thaliana);Dbxref=InterPro:IPR002937,PFAM:PF01593;Ontology_term=GO:0016491;
+scaffold_4	maker	gene	12660586	12665244	.	-	.	ID=Sdiv_G00014364;Name=Sdiv_G00014364;Alias=evm-scaffold_4-processed-gene-126.88;Note=Similar to PDS: 15-cis-phytoene desaturase%2C chloroplastic/chromoplastic (Arabidopsis thaliana);Dbxref=InterPro:IPR002937,PFAM:PF01593;Ontology_term=GO:0016491;
+scaffold_4	maker	mRNA	12660586	12665244	.	-	.	ID=Sdiv_T00014364-RA;Parent=Sdiv_G00014364;Name=Sdiv_T00014364-RA;Alias=evm-scaffold_4-processed-gene-126.88-mRNA-1;_AED=0.11;_QI=224|1|1|1|0.78|0.73|15|626|455;_eAED=0.11;_merge_warning=1;Note=Similar to PDS: 15-cis-phytoene desaturase%2C chloroplastic/chromoplastic (Arabidopsis thaliana);Dbxref=InterPro:IPR002937,PFAM:PF01593;Ontology_term=GO:001649
+```
+
+So, potentially 2 paralogs
+
+scaffold_4 12660586	12665244
+
+scaffold_7 9684161	9689234
+
+## Extract consensus
+
+on the genome center cluster
+
+```{bash}
+module load samtools # version 1.15.1
+module load bcftools # version 1.15
+cd /share/malooflab/Julin/git/S_tort_PDS/output
+vcfdir=/share/malooflab/Paulo/Dimensions/bwa_yahs_rerun/results/05_vcfmerge-norm
+refdir=/share/malooflab/Paulo/Dimensions/bwa_yahs_rerun/reference_data
+```
+
+```{bash}
+samtools faidx $refdir/Sdiv_YAHS_2.1.fa scaffold_4:12660586-12665244 > PDS_4.fa
+samtools faidx $refdir/Sdiv_YAHS_2.1.fa scaffold_7:9684161-9689234 > PDS_7.fa
+```
+
+Convert IUPAC to N to match ref
+```{bash}
+sed  '2,$s/[^ACGT]/N/g'  PDS_4.fa > PDS_4N.fa
+sed  '2,$s/[^ACGT]/N/g'  PDS_7.fa > PDS_7N.fa
+```
+
+
+```{bash, eval=FALSE}
+samples=$(bcftools head $vcfdir/allfam_biallelic-snp_norm.vcf.gz | grep "#CHROM" | cut -f 10-)
+```
+
+```{bash, eval=FALSE}
+rm -f PDS4_con.fa
+for s in $samples
+  do
+    cat PDS_4N.fa | \
+      bcftools consensus --mark-del - --mark-ins lc --haplotype A\
+      --sample $s --prefix ${s}_ \
+      $vcfdir/allfam_concat.vcf.gz  >> PDS4_con.fa 
+  done
+```
+
+```{bash, eval=FALSE}
+rm -f PDS7_con.fa
+for s in $samples
+  do
+    cat PDS_7N.fa | \
+      bcftools consensus --mark-del - --mark-ins lc --haplotype A\
+      --sample $s --prefix ${s}_ \
+      $vcfdir/allfam_concat.vcf.gz >> PDS7_con.fa 
+  done
+```
+
+
