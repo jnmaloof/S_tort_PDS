@@ -9,6 +9,10 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+library(Biostrings)
+```
+
 Using YaHS assembly `Sdiv.20220815.final.assembly.fasta` at `https://ucdavis.app.box.com/folder/190583930929`
 
 
@@ -82,13 +86,58 @@ for s in $samples
   done
 ```
 
+## revcom
+
+S.tort PDS4 sequences need to be reverse complemented
+
+```{r}
+PDS4 <- readDNAStringSet("../output/PDS4_con.fa")
+PDS4 <- reverseComplement(PDS4)
+writeXStringSet(PDS4, "../output/PDS4_con_revcomp.fa")
+```
+
+
 ## align
 
-First set up db
 ```{bash}
 cd ../output
 
-cat ../input/At_PDS3.fa PDS4_con.fa > PDS4_con_At.fa
+cat ../input/At_PDS3.fa ../input/At_PDS3_genomic.fa PDS4_con_revcomp.fa > PDS4_con_At.fa
+```
 
+```{bash}
+cd ../output
+mafft --thread 6 --ep 0 --op 10 --genafpair --maxiterate 1000 PDS4_con_At.fa > PDS4_aligned.fa
+```
+
+```{bash}
+cd ../output
+
+cat ../input/At_PDS3.fa ../input/At_PDS3_genomic.fa PDS7_con.fa > PDS7_con_At.fa
+```
+
+```{bash}
+cd ../output
+mafft --thread 6 --ep 0 --op 10 --genafpair --maxiterate 1000 PDS7_con_At.fa > PDS7_aligned.fa
+```
+
+Align then all
+
+```{bash}
+cd ../output
+
+cat ../input/At_PDS3.fa ../input/At_PDS3_genomic.fa PDS4_con_revcomp.fa PDS7_con.fa > PDS4_7_con_At.fa
+```
+
+```{bash}
+cd ../output
+mafft --thread 6 --ep 0 --op 10 --genafpair --maxiterate 1000 PDS4_7_con_At.fa > PDS4_7_aligned.fa
+```
+Build Tree
+
+First manually edit to remove CDS
+```{bash}
+cd ../output
+FastTreeMP -nt PDS4_7_aligned_genomic_only.fa > PDF4_7.tre
 ```
 
