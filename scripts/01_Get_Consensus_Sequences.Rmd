@@ -82,4 +82,13 @@ for s in $samples
   done
 ```
 
+## align
+
+First set up db
+```{bash}
+cd ../output
+
+cat ../input/At_PDS3.fa PDS4_con.fa > PDS4_con_At.fa
+
+```
 
